@@ -1,0 +1,34 @@
+%h1= @list.slug
+
+%h3== created by: #{@list.creator}
+
+%form{:action => "/#{@list.creator}/lists/#{@list.slug}/images", :method => 'post'}
+  %p enter an image url.  if it isn't hosted on imgur.com already, it will be rehosted
+
+  %p
+    %label{:for => 'url'}
+      URL: 
+      %input{:type => 'text', :name => 'url', :id => 'url', :size => 80, :value => params[:url]}
+
+  %p
+    %label{:for => 'kind_fail'}
+      fail: 
+      %input#kind_fail{:type => 'radio', :name => 'kind', :value => 'fail', :checked => params[:kind] != 'win'}
+    %label{:for => 'kind_win'}
+      win: 
+      %input#kind_win{:type => 'radio', :name => 'kind', :value => 'win', :checked => params[:kind] == 'win'}
+
+  %input{:type => "submit"}
+
+%h4 members
+%ul
+  - @list.users.each do |user|
+    %li= user
+
+%h4 images
+%ul
+  - @list.images.reverse.each do |image|
+    %li
+      %img{:src => image.imgur_url}
+      via
+      #{image.added_by}

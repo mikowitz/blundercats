@@ -9,7 +9,7 @@ class BlunderCats < Sinatra::Base
       provider :twitter, ENV['BLUNDERCATS_CONSUMER_KEY'], ENV['BLUNDERCATS_CONSUMER_SECRET']
     end
 
-    DataMapper.setup(:default, ENV['DATABASE_URL'] || 'sqlite3://my.db')
+    DataMapper.setup(:default, ENV['DATABASE_URL'])
     load 'list.rb'
   end
 
@@ -17,10 +17,28 @@ class BlunderCats < Sinatra::Base
     def user
       @user ||= OpenStruct.new(session[:user])
     end
+
+    def logged_in?
+      # TODO: this is pretty weak
+      user.nickname
+    end
+
+    def require_list_permissions
+      go_away unless user.nickname == params[:user] || List.get(params[:user], params[:list]).member?(user.nickname)
+    end
+
+    def go_away
+      redirect '/'
+      halt
+    end
   end
 
   get '/' do
-    %( <a href='/auth/twitter'>Sign in with Twitter</a> )
+    if logged_in?
+      %( <p>sorry, this isn't fully baked yet.  a work in progress, etc...</p><p>fwiw, your session user is #{session[:user].inspect}</p> )
+    else
+      %( <a href='/auth/twitter'>Sign in with Twitter</a> )
+    end
   end
 
   get '/auth/:name/callback' do
@@ -28,9 +46,36 @@ class BlunderCats < Sinatra::Base
     %( <p><img src="#{user.image}" />#{user.nickname} - #{user.name}</p> )
   end
 
-  get '/refresh/:list' do
-    return unless user.nickname
+  before '/:user/lists/:list/*' do
+    require_list_permissions
+  end
 
-    List.sync(user.nickname, params[:list]).to_json
+  get '/:user/lists/:list/?' do
+    require_list_permissions
+
+    @list = List.get(params[:user], params[:list])
+    haml :list
+  end
+
+  get '/:user/lists/:list/random/:type' do
+    # order here won't scale infinitely
+    redirect Image.random_url(params[:list], params[:user], params[:type])
+  end
+
+  post '/:user/lists/:list/images' do
+    Image.create(
+      :list_slug => params[:list],
+      :list_creator => params[:user],
+      :added_by => user.nickname,
+      :kind  => params[:kind],
+      :source_url => params[:url]
+    )
+
+    redirect "#{params[:user]}/lists/#{params[:list]}"
+  end
+
+  get '/:user/lists/:list/load' do
+    List.sync(user.nickname, params[:list])
+    redirect "#{user.nickname}/lists/#{params[:list]}"
   end
 end

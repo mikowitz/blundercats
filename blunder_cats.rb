@@ -46,10 +46,6 @@ class BlunderCats < Sinatra::Base
     %( <p><img src="#{user.image}" />#{user.nickname} - #{user.name}</p> )
   end
 
-  before '/:user/lists/:list/*' do
-    require_list_permissions
-  end
-
   get '/:user/lists/:list/?' do
     require_list_permissions
 
@@ -57,12 +53,17 @@ class BlunderCats < Sinatra::Base
     haml :list
   end
 
-  get '/:user/lists/:list/random/:type' do
-    # order here won't scale infinitely
-    redirect Image.random_url(params[:list], params[:user], params[:type])
+  get '/:user/lists/:list/random/:kind' do
+    image_url = Image.random_url(params[:list], params[:user], params[:kind].split('.')[0])
+    if params[:kind] =~ /\.txt$/
+      image_url
+    else
+      redirect image_url
+    end
   end
 
   post '/:user/lists/:list/images' do
+    require_list_permissions
     Image.create(
       :list_slug => params[:list],
       :list_creator => params[:user],
@@ -75,6 +76,7 @@ class BlunderCats < Sinatra::Base
   end
 
   get '/:user/lists/:list/load' do
+    require_list_permissions
     List.sync(user.nickname, params[:list])
     redirect "#{user.nickname}/lists/#{params[:list]}"
   end

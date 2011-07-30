@@ -21,7 +21,11 @@ class List
   end
 
   def member?(nickname)
-    users.include?(nickname) || creator == nickname
+    creator == nickname || users.include?(nickname)
+  end
+
+  def to_url
+    "/#{creator}/lists/#{slug}"
   end
 end
 

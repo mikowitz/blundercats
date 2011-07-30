@@ -27,6 +27,14 @@ class BlunderCats < Sinatra::Base
       go_away unless user.nickname == params[:user] || List.get(params[:user], params[:list]).member?(user.nickname)
     end
 
+    def first_list
+      # TODO: this won't scale
+      list = List.all.detect do |list|
+        list.member?(user.nickname)
+      end
+      list.to_url
+    end
+
     def go_away
       redirect '/'
       halt
@@ -35,15 +43,20 @@ class BlunderCats < Sinatra::Base
 
   get '/' do
     if logged_in?
-      %( <p>sorry, this isn't fully baked yet.  a work in progress, etc...</p><p>fwiw, your session user is #{session[:user].inspect}</p> )
+      redirect first_list
     else
       %( <a href='/auth/twitter'>Sign in with Twitter</a> )
     end
   end
 
+  get '/logout' do
+    session.delete(:user)
+    redirect '/'
+  end
+
   get '/auth/:name/callback' do
     session[:user] = request.env['omniauth.auth']['user_info']
-    %( <p><img src="#{user.image}" />#{user.nickname} - #{user.name}</p> )
+    redirect first_list
   end
 
   get '/:user/lists/:list/?' do
